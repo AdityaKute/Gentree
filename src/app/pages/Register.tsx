@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { TreePine, Check, X } from 'lucide-react';
+import { useAuth } from '../store/useAuthStore';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 export function Register() {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -18,6 +22,7 @@ export function Register() {
     username?: string;
     password?: string;
   }>({});
+  const [serverError, setServerError] = useState('');
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,7 +39,13 @@ export function Register() {
     return passwordRegex.test(password);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      navigate('/');
+    }
+  }, [auth.isAuthenticated, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: typeof errors = {};
 
@@ -61,8 +72,28 @@ export function Register() {
       return;
     }
 
-    // Mock registration - in production, this would call an API
-    navigate('/login');
+    setServerError('');
+    try {
+      const response = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          username: formData.username,
+          password: formData.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        setServerError(message || 'Registration failed.');
+        return;
+      }
+
+      navigate('/login');
+    } catch (error) {
+      setServerError('Unable to connect to the server.');
+    }
   };
 
   const getInputState = (field: keyof typeof formData) => {
@@ -91,6 +122,11 @@ export function Register() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {serverError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {serverError}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">

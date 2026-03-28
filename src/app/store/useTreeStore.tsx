@@ -1,15 +1,19 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { FamilyMember } from '../types/member';
 import * as treeUtils from '../utils/treeUtils';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 interface TreeStoreState {
   familyTree: FamilyMember[];
   selectedMemberId: string | null;
   highlightedIds: string[];
+  loading: boolean;
   setSelectedMemberId: (id: string | null) => void;
-  addMember: (data: Omit<FamilyMember, 'memberId' | 'children' | 'x' | 'y'>, parentId?: string | null) => void;
-  updateMember: (memberId: string, updates: Partial<FamilyMember>) => void;
-  deleteMember: (memberId: string) => void;
+  loadMembers: () => Promise<void>;
+  addMember: (data: Omit<FamilyMember, 'memberId' | 'children' | 'x' | 'y'>, parentId?: string | null) => Promise<void>;
+  updateMember: (memberId: string, updates: Partial<FamilyMember>) => Promise<void>;
+  deleteMember: (memberId: string) => Promise<void>;
   searchMembers: (query: string) => FamilyMember[];
   filterSubtreeByQuery: (query: string) => FamilyMember[];
   clearHighlights: () => void;
@@ -18,117 +22,81 @@ interface TreeStoreState {
 
 const TreeContext = createContext<TreeStoreState | undefined>(undefined);
 
-const initialFamilyTree: FamilyMember[] = [
-  {
-    memberId: '1',
-    firstName: 'John',
-    middleName: 'Robert',
-    lastName: 'Smith',
-    dob: '1950-03-15',
-    dod: '2020-08-22',
-    status: 'Dead',
-    x: 500,
-    y: 50,
-    children: [
-      {
-        memberId: '1.1',
-        firstName: 'Michael',
-        middleName: 'Robert',
-        lastName: 'Smith',
-        dob: '1975-06-10',
-        status: 'Alive',
-        parentId: '1',
-        x: 300,
-        y: 250,
-        children: [
-          {
-            memberId: '1.1.1',
-            firstName: 'Emily',
-            middleName: 'Grace',
-            lastName: 'Smith',
-            dob: '2000-12-05',
-            status: 'Alive',
-            parentId: '1.1',
-            x: 200,
-            y: 450,
-          },
-          {
-            memberId: '1.1.2',
-            firstName: 'Daniel',
-            middleName: 'James',
-            lastName: 'Smith',
-            dob: '2003-08-18',
-            status: 'Alive',
-            parentId: '1.1',
-            x: 400,
-            y: 450,
-          },
-        ],
-      },
-      {
-        memberId: '1.2',
-        firstName: 'Sarah',
-        middleName: 'Robert',
-        lastName: 'Smith',
-        dob: '1978-09-22',
-        status: 'Alive',
-        parentId: '1',
-        x: 700,
-        y: 250,
-        children: [
-          {
-            memberId: '1.2.1',
-            firstName: 'Olivia',
-            middleName: 'Rose',
-            lastName: 'Smith',
-            dob: '2005-04-14',
-            status: 'Alive',
-            parentId: '1.2',
-            x: 700,
-            y: 450,
-          },
-        ],
-      },
-    ],
-  },
-];
+const initialFamilyTree: FamilyMember[] = [];
 
 export function TreeProvider({ children }: { children: React.ReactNode }) {
   const [familyTree, setFamilyTree] = useState<FamilyMember[]>(initialFamilyTree);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [highlightedIds, setHighlightedIdsState] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const addMember = useCallback(
-    (data: Omit<FamilyMember, 'memberId' | 'children' | 'x' | 'y'>, parentId?: string | null) => {
-      const parentNode = parentId ? treeUtils.dfsFindNodeById(familyTree, parentId) : null;
-
-      const candidateSiblings = parentNode?.children ?? familyTree;
-      const memberId = treeUtils.generateMemberId(parentNode, candidateSiblings);
-
-      const newMember: FamilyMember = {
-        ...data,
-        memberId,
-        parentId: parentId ?? undefined,
-        children: [],
-        x: parentNode ? (parentNode.x ?? 600) + 180 : 600,
-        y: parentNode ? (parentNode.y ?? 100) + 200 : 100,
-      };
-
-      setFamilyTree((prev) => treeUtils.insertMember(prev, parentId ?? null, newMember));
-    },
-    [familyTree]
-  );
-
-  const updateMember = useCallback((memberId: string, updates: Partial<FamilyMember>) => {
-    setFamilyTree((prev) => treeUtils.updateMember(prev, memberId, updates));
+  const loadMembers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/members`);
+      if (!response.ok) {
+        throw new Error('Failed to load family members');
+      }
+      const members: FamilyMember[] = await response.json();
+      setFamilyTree(treeUtils.buildTree(members));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const deleteMember = useCallback((memberId: string) => {
-    setFamilyTree((prev) => treeUtils.deleteMember(prev, memberId));
-    if (selectedMemberId === memberId) {
-      setSelectedMemberId(null);
-    }
-  }, [selectedMemberId]);
+  useEffect(() => {
+    loadMembers();
+  }, [loadMembers]);
+
+  const addMember = useCallback(
+    async (data: Omit<FamilyMember, 'memberId' | 'children' | 'x' | 'y'>, parentId?: string | null) => {
+      const response = await fetch(`${API_BASE}/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...data, parentId: parentId ?? null }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to add member');
+      }
+      await loadMembers();
+    },
+    [loadMembers]
+  );
+
+  const updateMember = useCallback(
+    async (memberId: string, updates: Partial<FamilyMember>) => {
+      const response = await fetch(`${API_BASE}/members/${memberId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update member');
+      }
+      await loadMembers();
+    },
+    [loadMembers]
+  );
+
+  const deleteMember = useCallback(
+    async (memberId: string) => {
+      const response = await fetch(`${API_BASE}/members/${memberId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete member');
+      }
+      if (selectedMemberId === memberId) {
+        setSelectedMemberId(null);
+      }
+      await loadMembers();
+    },
+    [loadMembers, selectedMemberId]
+  );
 
   const searchMembers = useCallback(
     (query: string) => {
@@ -158,7 +126,9 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
       familyTree,
       selectedMemberId,
       highlightedIds,
+      loading,
       setSelectedMemberId,
+      loadMembers,
       addMember,
       updateMember,
       deleteMember,
@@ -167,7 +137,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
       clearHighlights,
       setHighlightedIds,
     }),
-    [familyTree, selectedMemberId, highlightedIds, addMember, updateMember, deleteMember, searchMembers, filterSubtreeByQuery, clearHighlights, setHighlightedIds]
+    [familyTree, selectedMemberId, highlightedIds, loading, loadMembers, addMember, updateMember, deleteMember, searchMembers, filterSubtreeByQuery, clearHighlights, setHighlightedIds]
   );
 
   return <TreeContext.Provider value={value}>{children}</TreeContext.Provider>;

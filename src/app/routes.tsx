@@ -6,6 +6,7 @@ import { TreeCanvas } from './pages/TreeCanvas';
 import { Search } from './pages/Search';
 import { Settings } from './pages/Settings';
 import { NotFound } from './pages/NotFound';
+import { RequireAuth } from './components/RequireAuth';
 
 export const router = createBrowserRouter([
   {
@@ -18,11 +19,17 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    Component: DashboardLayout,
+    Component: RequireAuth,
     children: [
-      { index: true, Component: TreeCanvas },
-      { path: 'search', Component: Search },
-      { path: 'settings', Component: Settings },
+      {
+        path: '/',
+        Component: DashboardLayout,
+        children: [
+          { index: true, Component: TreeCanvas },
+          { path: 'search', Component: Search },
+          { path: 'settings', Component: Settings },
+        ],
+      },
     ],
   },
   {

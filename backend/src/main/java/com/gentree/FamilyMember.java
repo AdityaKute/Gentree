@@ -1,9 +1,17 @@
 package com.gentree;
 
-import jakarta.persistence.*;
+import java.time.LocalDate;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "family_members")
@@ -40,7 +48,7 @@ public class FamilyMember {
     private String photoPath;
 
     @Column(name = "parent_id")
-    private Long parentId;
+    private String parentId;
 
     public enum Status {
         Alive, Dead
@@ -50,7 +58,7 @@ public class FamilyMember {
     public FamilyMember() {}
 
     public FamilyMember(String memberId, String firstName, String middleName, String lastName,
-                       LocalDate dob, LocalDate dod, Status status, String photoPath, Long parentId) {
+        LocalDate dob, LocalDate dod, Status status, String photoPath, String parentId) {
         this.memberId = memberId;
         this.firstName = firstName;
         this.middleName = middleName;
@@ -90,6 +98,6 @@ public class FamilyMember {
     public String getPhotoPath() { return photoPath; }
     public void setPhotoPath(String photoPath) { this.photoPath = photoPath; }
 
-    public Long getParentId() { return parentId; }
-    public void setParentId(Long parentId) { this.parentId = parentId; }
+    public String getParentId() { return parentId; }
+    public void setParentId(String parentId) { this.parentId = parentId; }
 }

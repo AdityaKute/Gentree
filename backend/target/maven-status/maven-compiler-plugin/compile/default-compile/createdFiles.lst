@@ -1,8 +1,10 @@
-com\gentree\FamilyMember$Status.class
-com\gentree\FamilyMember.class
+com\gentree\CorsConfig.class
 com\gentree\GenTreeApplication.class
 com\gentree\MemberService$MemberDTO.class
 com\gentree\MemberService$CreateMemberRequest.class
+com\gentree\MemberService$UpdateMemberRequest.class
+com\gentree\CorsConfig$1.class
+com\gentree\FamilyMember$Status.class
+com\gentree\FamilyMember.class
 com\gentree\MemberService.class
 com\gentree\FamilyMemberRepository.class
-com\gentree\MemberService$UpdateMemberRequest.class

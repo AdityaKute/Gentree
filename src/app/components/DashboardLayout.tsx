@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { useAuth } from '../store/useAuthStore';
 
 const navigationItems = [
   { icon: Home, label: 'Dashboard', path: '/' },
@@ -20,9 +21,14 @@ const navigationItems = [
 export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const auth = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const initials = auth.user
+    ? auth.user.username.slice(0, 2).toUpperCase()
+    : 'JD';
 
   const handleLogout = () => {
+    auth.logout();
     navigate('/login');
   };
 
@@ -88,12 +94,12 @@ export function DashboardLayout() {
                 <DropdownMenuTrigger asChild>
                   <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#2D5A27]/5 transition-colors">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src="" alt="User" />
-                      <AvatarFallback className="bg-[#C2A878] text-white">JD</AvatarFallback>
+                      <AvatarImage src="" alt={auth.user?.username || 'User'} />
+                      <AvatarFallback className="bg-[#C2A878] text-white">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 text-left">
-                      <p className="text-sm font-medium text-gray-900">John Doe</p>
-                      <p className="text-xs text-gray-600">john.doe@email.com</p>
+                      <p className="text-sm font-medium text-gray-900">{auth.user?.username ?? 'John Doe'}</p>
+                      <p className="text-xs text-gray-600">{auth.user?.email ?? 'john.doe@email.com'}</p>
                     </div>
                   </button>
                 </DropdownMenuTrigger>

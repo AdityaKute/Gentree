@@ -1,18 +1,18 @@
 package com.gentree;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface FamilyMemberRepository extends JpaRepository<FamilyMember, Long> {
 
     Optional<FamilyMember> findByMemberId(String memberId);
 
-    List<FamilyMember> findByParentId(Long parentId);
+    List<FamilyMember> findByParentId(String parentId);
 
     @Query("SELECT m FROM FamilyMember m WHERE m.parentId IS NULL")
     List<FamilyMember> findRootMembers();

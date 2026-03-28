@@ -1,18 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { TreePine } from 'lucide-react';
+import { useAuth } from '../store/useAuthStore';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 export function Login() {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
+  const [serverError, setServerError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      navigate('/');
+    }
+  }, [auth.isAuthenticated, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: { username?: string; password?: string } = {};
 
@@ -28,8 +39,26 @@ export function Login() {
       return;
     }
 
-    // Mock authentication - in production, this would call an API
-    navigate('/');
+    setServerError('');
+    try {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        setServerError(message || 'Login failed.');
+        return;
+      }
+
+      const data = await response.json();
+      auth.login(data);
+      navigate('/');
+    } catch (error) {
+      setServerError('Unable to connect to the server.');
+    }
   };
 
   return (
@@ -46,6 +75,11 @@ export function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {serverError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {serverError}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input

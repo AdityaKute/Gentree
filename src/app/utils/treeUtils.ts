@@ -14,6 +14,29 @@ export function flattenTree(nodes: FamilyMember[]): FamilyMember[] {
   return result;
 }
 
+export function buildTree(members: FamilyMember[]): FamilyMember[] {
+  const map = new Map<string, FamilyMember>();
+  const roots: FamilyMember[] = [];
+
+  members.forEach((member) => {
+    map.set(member.memberId, { ...member, children: [] });
+  });
+
+  map.forEach((member) => {
+    if (member.parentId) {
+      const parent = map.get(member.parentId);
+      if (parent) {
+        parent.children = parent.children ?? [];
+        parent.children.push(member);
+        return;
+      }
+    }
+    roots.push(member);
+  });
+
+  return roots;
+}
+
 export function generateMemberId(
   parent: FamilyMember | null,
   siblings: FamilyMember[]

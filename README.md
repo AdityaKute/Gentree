@@ -24,7 +24,8 @@ A production-ready family tree management application built with React, TypeScri
 
 ### Backend
 - Spring Boot 3.2
-- PostgreSQL database
+- H2 in-memory database by default
+- PostgreSQL support via explicit profile
 - JPA/Hibernate
 - Maven
 
@@ -79,20 +80,32 @@ GenTree/
 
 ### Backend Setup
 
-1. Ensure PostgreSQL is running and create database:
+The backend uses an in-memory H2 database by default for local development, so no PostgreSQL setup is required to run the app locally.
+
+1. Run the Spring Boot application using the default H2 database:
+   ```bash
+   cd backend
+   mvn spring-boot:run
+   ```
+
+2. If you want to use PostgreSQL instead, first create the database and user:
    ```sql
    CREATE DATABASE gentree;
    CREATE USER gentree_user WITH PASSWORD 'gentree_password';
    GRANT ALL PRIVILEGES ON DATABASE gentree TO gentree_user;
    ```
 
-2. Update `backend/src/main/resources/application.properties` with your database credentials
-
-3. Run the Spring Boot application:
+3. Then run Spring Boot with the `postgres` profile enabled:
    ```bash
    cd backend
-   mvn spring-boot:run
+   SPRING_PROFILES_ACTIVE=postgres mvn spring-boot:run
    ```
+
+4. Optional environment variables for PostgreSQL:
+   - `DB_URL` (default: `jdbc:postgresql://localhost:5432/gentree`)
+   - `DB_USER` (default: `gentree_user`)
+   - `DB_PASS` (default: `gentree_password`)
+   - `SERVER_PORT` (default: `8080`)
 
 ## API Endpoints
 

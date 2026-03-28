@@ -1,14 +1,22 @@
 package com.gentree;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import jakarta.validation.Valid;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/members")
@@ -38,7 +46,7 @@ public class MemberService {
             this.dod = member.getDod() != null ? member.getDod().toString() : null;
             this.status = member.getStatus().toString();
             this.photoPath = member.getPhotoPath();
-            this.parentId = member.getParentId() != null ? member.getParentId().toString() : null;
+            this.parentId = member.getParentId();
         }
     }
 
@@ -59,12 +67,10 @@ public class MemberService {
 
     @PostMapping
     public ResponseEntity<MemberDTO> createMember(@Valid @RequestBody CreateMemberRequest request) {
-        // Validate DOD >= DOB
         if (request.dod != null && request.dod.isBefore(request.dob)) {
             return ResponseEntity.badRequest().build();
         }
 
-        // Generate hierarchical memberId
         String memberId = generateMemberId(request.parentId);
 
         FamilyMember member = new FamilyMember();
@@ -79,7 +85,7 @@ public class MemberService {
         member.setParentId(request.parentId);
 
         FamilyMember saved = repository.save(member);
-        return ResponseEntity.ok(new MemberDTO(saved));
+        return ResponseEntity.status(201).body(new MemberDTO(saved));
     }
 
     @PutMapping("/{id}")
@@ -122,30 +128,28 @@ public class MemberService {
     }
 
     private void deleteMemberAndChildren(FamilyMember member) {
-        List<FamilyMember> children = repository.findByParentId(member.getId());
+        List<FamilyMember> children = repository.findByParentId(member.getMemberId());
         for (FamilyMember child : children) {
             deleteMemberAndChildren(child);
         }
         repository.delete(member);
     }
 
-    private String generateMemberId(Long parentId) {
-        if (parentId == null) {
-            // Root level
+    private String generateMemberId(String parentId) {
+        if (parentId == null || parentId.isBlank()) {
             List<FamilyMember> roots = repository.findRootMembers();
             int nextIndex = roots.size() + 1;
             return String.valueOf(nextIndex);
-        } else {
-            // Child level
-            Optional<FamilyMember> parent = repository.findById(parentId);
-            if (!parent.isPresent()) {
-                throw new IllegalArgumentException("Parent not found");
-            }
-
-            List<FamilyMember> siblings = repository.findByParentId(parentId);
-            int nextIndex = siblings.size() + 1;
-            return parent.get().getMemberId() + "." + nextIndex;
         }
+
+        Optional<FamilyMember> parent = repository.findByMemberId(parentId);
+        if (parent.isEmpty()) {
+            throw new IllegalArgumentException("Parent not found");
+        }
+
+        List<FamilyMember> siblings = repository.findByParentId(parentId);
+        int nextIndex = siblings.size() + 1;
+        return parent.get().getMemberId() + "." + nextIndex;
     }
 
     // Request DTOs
@@ -157,7 +161,7 @@ public class MemberService {
         public LocalDate dod;
         public String status;
         public String photoPath;
-        public Long parentId;
+        public String parentId;
     }
 
     public static class UpdateMemberRequest {
